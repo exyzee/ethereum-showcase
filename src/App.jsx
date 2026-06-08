@@ -958,7 +958,7 @@ export default function App() {
 
       {/* Globe */}
       <div style={{ padding: "20px 16px 8px", position: "relative", zIndex: 1, display: view === "explore" ? "block" : "none" }}>
-        <Globe communities={COMMUNITIES} onCommunityTap={setSelectedCommunity} visited={visited} />
+        <Globe communities={COMMUNITIES} onCommunityTap={setSelectedCommunity} visited={new Set()} />
         <div style={{
           textAlign: "center", marginTop: 6,
           fontFamily: "system-ui", fontSize: 11, color: "rgba(200, 180, 255, 0.3)",
