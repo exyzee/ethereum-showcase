@@ -44,6 +44,62 @@ const COMMUNITIES = [
   { name: "ETH Riyadh", short: "RY", lat: 24.71, lng: 46.68, x: "EthRiyadh", color: "#fb923c" },
 ];
 
+const QUEST_DATA = [
+  {
+    category: "GETTING STARTED",
+    quests: [
+      { id: "q1", title: "Bought ETH", points: 5 },
+      { id: "q2", title: "Explained Ethereum to your parents", points: 5 },
+      { id: "q3", title: "Deployed a smart contract", points: 10 },
+      { id: "q4", title: "Held ETH through a bear market", points: 10 },
+      { id: "q5", title: "Joined an ETH community telegram or discord", points: 5 },
+    ]
+  },
+  {
+    category: "FIRST STEPS",
+    quests: [
+      { id: "q6", title: "Attended your first ETH event", points: 10 },
+      { id: "q7", title: "Went to an ETHGlobal hackathon", points: 15 },
+      { id: "q8", title: "Wore conference merch in a completely unrelated setting", points: 10 },
+      { id: "q9", title: "Made a friend at a conference you still talk to today", points: 15 },
+      { id: "q10", title: "Convinced a friend to come to their first ETH event", points: 10 },
+    ]
+  },
+  {
+    category: "TRAVELER",
+    quests: [
+      { id: "q11", title: "Attended an ETH event in another country", points: 20 },
+      { id: "q12", title: "Traveled solo to a conference", points: 20 },
+      { id: "q13", title: "Got a last-minute flight to an ETH event", points: 20 },
+      { id: "q14", title: "Tried local food recommended by someone from the community", points: 15 },
+      { id: "q15", title: "Learned a word in another language from someone at an event", points: 15 },
+      { id: "q16", title: "Extended a trip because you were having too good a time", points: 15 },
+    ]
+  },
+  {
+    category: "WORLD WIDE",
+    quests: [
+      { id: "q17", title: "Attended an ETH event on a different continent", points: 30 },
+      { id: "q18", title: "Been to 3+ countries for ETH events", points: 25 },
+      { id: "q19", title: "Been to 5+ countries for ETH events", points: 30 },
+      { id: "q20", title: "Met people from 5+ countries at a single event", points: 20 },
+      { id: "q21", title: "Stayed at someone's place you met at an ETH event", points: 25 },
+      { id: "q22", title: "Joined a local community's group chat in a country you visited", points: 20 },
+    ]
+  },
+  {
+    category: "LEGEND",
+    quests: [
+      { id: "q23", title: "Been to Devcon", points: 30 },
+      { id: "q24", title: "Spoke or hosted a session at an ETH event", points: 35 },
+      { id: "q25", title: "Organized an ETH meetup", points: 40 },
+      { id: "q26", title: "Run a local ETH community", points: 50 },
+      { id: "q27", title: "Afterparty went past 4am", points: 30 },
+      { id: "q28", title: "Been to 10+ countries for ETH events", points: 50 },
+    ]
+  }
+];
+
 // Simplified ETH Belgium diamond logo as SVG paths
 function EthBelgiumDiamond({ size = 32 }) {
   return (
@@ -428,7 +484,7 @@ function StarField() {
   );
 }
 
-function ConferenceCard({ conf, index, saved, onSave, onVisit, isVisited }) {
+function ConferenceCard({ conf, index, saved, onSave }) {
   const [vis, setVis] = useState(false);
   const ref = useRef(null);
   useEffect(() => {
@@ -487,16 +543,6 @@ function ConferenceCard({ conf, index, saved, onSave, onVisit, isVisited }) {
             color: conf.highlight ? "#d4a853" : "#c4b5fd",
             fontSize: 13, fontWeight: 600, fontFamily: "system-ui", letterSpacing: 0.5,
           }}>Learn more →</a>
-          <button onClick={() => onVisit(conf.id)} style={{
-            flex: 1,
-            background: isVisited(conf.id) ? "linear-gradient(135deg, #34d39920, #34d39910)" : "rgba(255,255,255,0.05)",
-            border: isVisited(conf.id) ? "1px solid #34d39940" : "1px solid rgba(255,255,255,0.1)",
-            borderRadius: 10, padding: "10px 0", textAlign: "center",
-            color: isVisited(conf.id) ? "#34d399" : "rgba(255,255,255,0.4)",
-            fontSize: 13, fontWeight: 600, fontFamily: "system-ui", cursor: "pointer",
-          }}>
-            {isVisited(conf.id) ? "✓ Stamped" : "Stamp Passport"}
-          </button>
         </div>
       </div>
     </div>
@@ -528,79 +574,167 @@ function CommunityPill({ community }) {
   );
 }
 
-function Stamp({ id, size = 100, stamped = false }) {
-  const colors = ["#d4a853", "#8b5cf6", "#34d399", "#f87171", "#60a5fa", "#fb923c"];
-  const color = colors[id % colors.length];
+function QuestsView({ quests, onToggleQuest, totalPoints, userProfile, setUserProfile, setView }) {
+  const [showSubmitModal, setShowSubmitModal] = useState(false);
+  const [nameInput, setNameInput] = useState(userProfile.name || "");
+  const [twitterInput, setTwitterInput] = useState(userProfile.twitter || "");
+
+  const handleSubmit = (e) => {
+    e.preventDefault();
+    if (!nameInput.trim()) return;
+    setUserProfile({ name: nameInput, twitter: twitterInput, submitted: true });
+    setShowSubmitModal(false);
+    setView("leaderboard");
+  };
 
   return (
-    <div style={{
-      width: size, height: size, borderRadius: "50%",
-      border: `2px dashed ${stamped ? color : "rgba(255,255,255,0.1)"}`,
-      display: "flex", alignItems: "center", justifyContent: "center",
-      position: "relative", opacity: stamped ? 1 : 0.3,
-      transform: stamped ? "rotate(-10deg)" : "none",
-      transition: "all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275)",
-      background: stamped ? `${color}10` : "transparent",
-    }}>
-      <div style={{
-        fontSize: size * 0.4, filter: stamped ? "none" : "grayscale(100%)",
-      }}>🎟️</div>
-      {stamped && (
-        <div style={{
-          position: "absolute", inset: 0, borderRadius: "50%",
-          border: `4px solid ${color}40`, margin: 4,
-        }} />
-      )}
-      <div style={{
-        position: "absolute", bottom: -15, left: "50%", transform: "translateX(-50%)",
-        fontSize: 10, color: stamped ? color : "rgba(255,255,255,0.2)",
-        fontWeight: 700, whiteSpace: "nowrap", letterSpacing: 1, textTransform: "uppercase",
-      }}>
-        {stamped ? "STAMPED" : "LOCKED"}
-      </div>
-    </div>
-  );
-}
-
-function PassportView({ visited }) {
-  const visitedConfs = CONFERENCES.filter(c => visited.has(c.id));
-
-  return (
-    <div style={{ padding: "80px 20px 100px", animation: "fadeUp 0.6s ease-out" }}>
-      <div style={{ textAlign: "center", marginBottom: 40 }}>
-        <h2 style={{ fontFamily: "'Playfair Display', serif", fontSize: 32, marginBottom: 8 }}>Digital Passport</h2>
-        <p style={{ color: "rgba(200, 180, 255, 0.5)", fontSize: 14 }}>Collect stamps from the events you've attended</p>
+    <div style={{ padding: "80px 20px 120px", animation: "fadeUp 0.6s ease-out" }}>
+      <div style={{ textAlign: "center", marginBottom: 30 }}>
+        <h2 style={{ fontFamily: "'Playfair Display', serif", fontSize: 32, marginBottom: 8 }}>ETH Explorer Quests</h2>
+        <p style={{ color: "rgba(200, 180, 255, 0.5)", fontSize: 14 }}>Complete quests to earn points and rank on the leaderboard.</p>
       </div>
 
-      <div style={{
-        display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(140px, 1fr))",
-        gap: "40px 20px", maxWidth: 600, margin: "0 auto",
-      }}>
-        {CONFERENCES.map(c => (
-          <div key={c.id} style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 12 }}>
-            <Stamp id={c.id} size={80} stamped={visited.has(c.id)} />
-            <div style={{ textAlign: "center" }}>
-              <div style={{ fontSize: 13, fontWeight: 600, color: "white" }}>{c.name}</div>
-              <div style={{ fontSize: 11, color: "rgba(255,255,255,0.4)" }}>{c.date}</div>
+      <div style={{ maxWidth: 600, margin: "0 auto" }}>
+        {QUEST_DATA.map((category) => (
+          <div key={category.category} style={{ marginBottom: 32 }}>
+            <h3 style={{
+              fontSize: 12, fontWeight: 800, color: "#d4a853", letterSpacing: 1.5,
+              borderBottom: "1px solid rgba(212, 168, 83, 0.2)", paddingBottom: 8, marginBottom: 16
+            }}>{category.category}</h3>
+
+            <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+              {category.quests.map((q) => {
+                const checked = quests.has(q.id);
+                return (
+                  <label key={q.id} style={{
+                    display: "flex", alignItems: "flex-start", gap: 12, padding: "12px 16px",
+                    background: checked ? "rgba(212, 168, 83, 0.08)" : "rgba(255,255,255,0.03)",
+                    border: checked ? "1px solid rgba(212, 168, 83, 0.3)" : "1px solid rgba(255,255,255,0.05)",
+                    borderRadius: 12, cursor: "pointer", transition: "all 0.2s"
+                  }}>
+                    <input
+                      type="checkbox"
+                      checked={checked}
+                      onChange={() => onToggleQuest(q.id)}
+                      style={{ marginTop: 3, width: 18, height: 18, accentColor: "#d4a853", cursor: "pointer" }}
+                    />
+                    <div style={{ flex: 1 }}>
+                      <div style={{ fontSize: 15, fontWeight: 500, color: checked ? "white" : "rgba(255,255,255,0.8)", lineHeight: 1.4 }}>{q.title}</div>
+                    </div>
+                    <div style={{
+                      fontSize: 12, fontWeight: 700,
+                      color: checked ? "#d4a853" : "rgba(200, 180, 255, 0.5)",
+                      background: checked ? "rgba(212, 168, 83, 0.15)" : "rgba(139, 92, 246, 0.1)",
+                      padding: "4px 8px", borderRadius: 12
+                    }}>+{q.points}</div>
+                  </label>
+                );
+              })}
             </div>
           </div>
         ))}
       </div>
+
+      {/* Sticky Bottom Bar for Submit */}
+      <div style={{
+        position: "fixed", bottom: 0, left: 0, right: 0,
+        background: "rgba(10, 5, 30, 0.95)", backdropFilter: "blur(12px)",
+        borderTop: "1px solid rgba(139, 92, 246, 0.2)", padding: "16px 20px",
+        display: "flex", justifyContent: "space-between", alignItems: "center", zIndex: 90
+      }}>
+        <div style={{ maxWidth: 600, margin: "0 auto", width: "100%", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+          <div>
+            <div style={{ fontSize: 11, color: "rgba(255,255,255,0.5)", textTransform: "uppercase", letterSpacing: 1 }}>Total Score</div>
+            <div style={{ fontSize: 24, fontWeight: 800, color: "#d4a853" }}>{totalPoints} <span style={{ fontSize: 14, color: "rgba(212, 168, 83, 0.6)" }}>pts</span></div>
+          </div>
+          <button
+            onClick={() => setShowSubmitModal(true)}
+            disabled={totalPoints === 0}
+            style={{
+              background: totalPoints > 0 ? "linear-gradient(135deg, #d4a853, #b8860b)" : "rgba(255,255,255,0.1)",
+              color: totalPoints > 0 ? "#0a0a1a" : "rgba(255,255,255,0.3)",
+              border: "none", padding: "12px 24px", borderRadius: 12,
+              fontSize: 14, fontWeight: 700, fontFamily: "system-ui", cursor: totalPoints > 0 ? "pointer" : "default",
+              boxShadow: totalPoints > 0 ? "0 4px 12px rgba(212, 168, 83, 0.3)" : "none"
+            }}
+          >
+            {userProfile.submitted ? "Update Leaderboard" : "Submit Score"}
+          </button>
+        </div>
+      </div>
+
+      {/* Submit Modal */}
+      {showSubmitModal && (
+        <div style={{
+          position: "fixed", inset: 0, zIndex: 300, background: "rgba(0,0,0,0.6)", backdropFilter: "blur(4px)",
+          display: "flex", alignItems: "center", justifyContent: "center", padding: 20
+        }}>
+          <div style={{
+            background: "linear-gradient(135deg, #150d3a, #0d0830)", border: "1px solid rgba(212, 168, 83, 0.4)",
+            borderRadius: 20, padding: 32, width: "100%", maxWidth: 400,
+          }}>
+            <h3 style={{ fontSize: 22, fontFamily: "'Playfair Display', serif", marginBottom: 8 }}>Claim your rank</h3>
+            <p style={{ fontSize: 13, color: "rgba(255,255,255,0.6)", marginBottom: 24 }}>Enter your name to appear on the global leaderboard with {totalPoints} points.</p>
+
+            <form onSubmit={handleSubmit} style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+              <div>
+                <label style={{ display: "block", fontSize: 12, color: "rgba(255,255,255,0.5)", marginBottom: 6 }}>Display Name *</label>
+                <input
+                  type="text" required value={nameInput} onChange={e => setNameInput(e.target.value)}
+                  placeholder="e.g. vitalik.eth"
+                  style={{
+                    width: "100%", padding: "12px 16px", borderRadius: 10,
+                    background: "rgba(0,0,0,0.2)", border: "1px solid rgba(255,255,255,0.1)", color: "white",
+                    fontSize: 16, outline: "none"
+                  }}
+                />
+              </div>
+              <div>
+                <label style={{ display: "block", fontSize: 12, color: "rgba(255,255,255,0.5)", marginBottom: 6 }}>Twitter/X Handle (optional)</label>
+                <input
+                  type="text" value={twitterInput} onChange={e => setTwitterInput(e.target.value)}
+                  placeholder="@username"
+                  style={{
+                    width: "100%", padding: "12px 16px", borderRadius: 10,
+                    background: "rgba(0,0,0,0.2)", border: "1px solid rgba(255,255,255,0.1)", color: "white",
+                    fontSize: 16, outline: "none"
+                  }}
+                />
+              </div>
+
+              <div style={{ display: "flex", gap: 12, marginTop: 8 }}>
+                <button type="button" onClick={() => setShowSubmitModal(false)} style={{
+                  flex: 1, padding: "12px", borderRadius: 10, background: "rgba(255,255,255,0.05)",
+                  color: "white", border: "none", fontWeight: 600, cursor: "pointer"
+                }}>Cancel</button>
+                <button type="submit" style={{
+                  flex: 2, padding: "12px", borderRadius: 10, background: "linear-gradient(135deg, #d4a853, #b8860b)",
+                  color: "#0a0a1a", border: "none", fontWeight: 700, cursor: "pointer"
+                }}>Publish to Board</button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
 
 const MOCK_LEADERBOARD = [
-  { name: "Vitalik.eth", count: 12, avatar: "🐼" },
-  { name: "Aya Miyaguchi", count: 10, avatar: "🌟" },
-  { name: "Tim Beiko", count: 9, avatar: "⚡" },
-  { name: "Glen Weyl", count: 7, avatar: "🎓" },
-  { name: "Skylar Weaver", count: 6, avatar: "🌈" },
+  { name: "Vitalik.eth", count: 450, avatar: "🐼" },
+  { name: "Aya Miyaguchi", count: 380, avatar: "🌟" },
+  { name: "Tim Beiko", count: 320, avatar: "⚡" },
+  { name: "Glen Weyl", count: 210, avatar: "🎓" },
+  { name: "Skylar Weaver", count: 180, avatar: "🌈" },
 ];
 
-function LeaderboardView({ visitedCount }) {
-  const sortedBoard = [...MOCK_LEADERBOARD, { name: "You", count: visitedCount, avatar: "👤", current: true }]
-    .sort((a, b) => b.count - a.count);
+function LeaderboardView({ totalPoints, userProfile }) {
+  const baseBoard = [...MOCK_LEADERBOARD];
+  if (userProfile.submitted) {
+    baseBoard.push({ name: userProfile.name, count: totalPoints, avatar: "👤", current: true });
+  }
+
+  const sortedBoard = baseBoard.sort((a, b) => b.count - a.count);
 
   return (
     <div style={{ padding: "80px 20px 100px", animation: "fadeUp 0.6s ease-out" }}>
@@ -621,11 +755,17 @@ function LeaderboardView({ visitedCount }) {
             <div style={{ flex: 1, fontWeight: 600, color: entry.current ? "#d4a853" : "white" }}>{entry.name}</div>
             <div style={{ textAlign: "right" }}>
               <div style={{ fontSize: 16, fontWeight: 800, color: "white" }}>{entry.count}</div>
-              <div style={{ fontSize: 10, color: "rgba(255,255,255,0.4)", textTransform: "uppercase" }}>stamps</div>
+              <div style={{ fontSize: 10, color: "rgba(255,255,255,0.4)", textTransform: "uppercase" }}>pts</div>
             </div>
           </div>
         ))}
       </div>
+
+      {!userProfile.submitted && totalPoints > 0 && (
+        <div style={{ textAlign: "center", marginTop: 30 }}>
+          <p style={{ fontSize: 13, color: "rgba(255,255,255,0.5)" }}>You have {totalPoints} points waiting to be claimed.</p>
+        </div>
+      )}
     </div>
   );
 }
@@ -676,23 +816,45 @@ export default function App() {
       return s ? new Set(JSON.parse(s)) : new Set();
     } catch (e) { return new Set(); }
   });
-  const [visited, setVisited] = useState(() => {
+  const [quests, setQuests] = useState(() => {
     try {
-      const v = localStorage.getItem("visited_confs");
+      const v = localStorage.getItem("checked_quests");
       return v ? new Set(JSON.parse(v)) : new Set();
     } catch (e) { return new Set(); }
   });
+  const [userProfile, setUserProfile] = useState(() => {
+    try {
+      const p = localStorage.getItem("user_profile");
+      return p ? JSON.parse(p) : { name: "", twitter: "", submitted: false };
+    } catch (e) { return { name: "", twitter: "", submitted: false }; }
+  });
+
   const [showSavedOnly, setShowSavedOnly] = useState(false);
   const [selectedCommunity, setSelectedCommunity] = useState(null);
-  const [view, setView] = useState("explore"); // explore, passport, leaderboard
+  const [view, setView] = useState("explore"); // explore, quests, leaderboard
+
+  // Calculate total points
+  const totalPoints = useMemo(() => {
+    let pts = 0;
+    const questMap = {};
+    QUEST_DATA.forEach(cat => cat.quests.forEach(q => questMap[q.id] = q.points));
+    quests.forEach(id => {
+      if (questMap[id]) pts += questMap[id];
+    });
+    return pts;
+  }, [quests]);
 
   useEffect(() => {
     localStorage.setItem("saved_confs", JSON.stringify([...saved]));
   }, [saved]);
 
   useEffect(() => {
-    localStorage.setItem("visited_confs", JSON.stringify([...visited]));
-  }, [visited]);
+    localStorage.setItem("checked_quests", JSON.stringify([...quests]));
+  }, [quests]);
+
+  useEffect(() => {
+    localStorage.setItem("user_profile", JSON.stringify(userProfile));
+  }, [userProfile]);
 
   const toggleSave = useCallback((id) => {
     setSaved((prev) => {
@@ -702,8 +864,8 @@ export default function App() {
     });
   }, []);
 
-  const toggleVisit = useCallback((id) => {
-    setVisited((prev) => {
+  const toggleQuest = useCallback((id) => {
+    setQuests((prev) => {
       const next = new Set(prev);
       if (next.has(id)) next.delete(id); else next.add(id);
       return next;
@@ -811,7 +973,7 @@ export default function App() {
         padding: "6px", display: "flex", gap: 4, zIndex: 100,
         boxShadow: "0 8px 32px rgba(0,0,0,0.4)",
       }}>
-        {["explore", "passport", "leaderboard"].map((v) => (
+        {["explore", "quests", "leaderboard"].map((v) => (
           <button key={v} onClick={() => setView(v)} style={{
             padding: "8px 18px", borderRadius: 24, border: "none",
             background: view === v ? "linear-gradient(135deg, #8b5cf6, #6d28d9)" : "transparent",
@@ -874,14 +1036,26 @@ export default function App() {
             index={i}
             saved={saved.has(conf.id)}
             onSave={toggleSave}
-            onVisit={toggleVisit}
-            isVisited={(id) => visited.has(id)}
           />
         ))}
       </div>
 
-      {view === "passport" && <PassportView visited={visited} />}
-      {view === "leaderboard" && <LeaderboardView visitedCount={visited.size} />}
+      {view === "quests" && (
+        <QuestsView
+          quests={quests}
+          onToggleQuest={toggleQuest}
+          totalPoints={totalPoints}
+          userProfile={userProfile}
+          setUserProfile={setUserProfile}
+          setView={setView}
+        />
+      )}
+      {view === "leaderboard" && (
+        <LeaderboardView
+          totalPoints={totalPoints}
+          userProfile={userProfile}
+        />
+      )}
 
       {/* Source credit */}
       <div style={{ textAlign: "center", padding: "0 20px 16px", position: "relative", zIndex: 1 }}>
