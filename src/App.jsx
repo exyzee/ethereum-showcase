@@ -56,9 +56,11 @@ function EthBelgiumDiamond({ size = 32 }) {
   );
 }
 
-function Globe({ communities, onCommunityTap }) {
+function Globe({ communities, onCommunityTap, visited }) {
   const canvasRef = useRef(null);
   const animRef = useRef(null);
+  const rotRef = useRef({ x: 0, y: 0 });
+  const zoomRef = useRef(1);
   const countriesRef = useRef([]);
   const visitedRef = useRef(new Set());
 
