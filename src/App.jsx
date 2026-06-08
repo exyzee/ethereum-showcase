@@ -720,16 +720,8 @@ function QuestsView({ quests, onToggleQuest, totalPoints, userProfile, setUserPr
   );
 }
 
-const MOCK_LEADERBOARD = [
-  { name: "Vitalik.eth", count: 450, avatar: "🐼" },
-  { name: "Aya Miyaguchi", count: 380, avatar: "🌟" },
-  { name: "Tim Beiko", count: 320, avatar: "⚡" },
-  { name: "Glen Weyl", count: 210, avatar: "🎓" },
-  { name: "Skylar Weaver", count: 180, avatar: "🌈" },
-];
-
 function LeaderboardView({ totalPoints, userProfile }) {
-  const baseBoard = [...MOCK_LEADERBOARD];
+  const baseBoard = [];
   if (userProfile.submitted) {
     baseBoard.push({ name: userProfile.name, count: totalPoints, avatar: "👤", current: true });
   }
@@ -744,6 +736,11 @@ function LeaderboardView({ totalPoints, userProfile }) {
       </div>
 
       <div style={{ maxWidth: 400, margin: "0 auto", background: "rgba(139, 92, 246, 0.05)", borderRadius: 24, border: "1px solid rgba(139, 92, 246, 0.1)", overflow: "hidden" }}>
+        {sortedBoard.length === 0 && (
+          <div style={{ padding: "40px 20px", textAlign: "center", color: "rgba(255,255,255,0.4)", fontSize: 14 }}>
+            The leaderboard is empty. Start completing quests and submit your score to be the first!
+          </div>
+        )}
         {sortedBoard.map((entry, i) => (
           <div key={entry.name} style={{
             display: "flex", alignItems: "center", gap: 16, padding: "16px 20px",
