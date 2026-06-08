@@ -48,10 +48,10 @@ const COMMUNITIES = [
 function EthBelgiumDiamond({ size = 32 }) {
   return (
     <svg width={size} height={size} viewBox="20 32 100 150" fill="none" xmlns="http://www.w3.org/2000/svg">
-      <path d="M115.892 111.994L70.292 176.433L24.6582 111.994L70.2754 35.7227L115.892 111.994Z" fill="#EEE9E6" stroke="white" strokeWidth="0.5"/>
-      <path d="M70.2038 50.5195L36.3477 107.401L70.2038 127.794L104.053 107.401L70.2038 50.5195Z" fill="#F3C414"/>
-      <path d="M70.2031 127.794L104.052 107.401L70.2031 50.5195" fill="#FF1800"/>
-      <path d="M70.1222 135.926L35.8242 115.222L70.2327 163.834L104.641 115.222L70.1222 135.926Z" fill="#1a1a2e"/>
+      <path d="M115.892 111.994L70.292 176.433L24.6582 111.994L70.2754 35.7227L115.892 111.994Z" fill="#EEE9E6" stroke="white" strokeWidth="0.5" />
+      <path d="M70.2038 50.5195L36.3477 107.401L70.2038 127.794L104.053 107.401L70.2038 50.5195Z" fill="#F3C414" />
+      <path d="M70.2031 127.794L104.052 107.401L70.2031 50.5195" fill="#FF1800" />
+      <path d="M70.1222 135.926L35.8242 115.222L70.2327 163.834L104.641 115.222L70.1222 135.926Z" fill="#1a1a2e" />
     </svg>
   );
 }
@@ -67,10 +67,27 @@ function Globe({ communities, onCommunityTap }) {
   const idleTimer = useRef(null);
   const pointsRef = useRef([]);
   const sizeRef = useRef(320);
+  const countriesRef = useRef([]);
 
   const resumeAuto = useCallback(() => {
     clearTimeout(idleTimer.current);
     idleTimer.current = setTimeout(() => { autoRef.current = true; }, 2500);
+  }, []);
+
+  useEffect(() => {
+    // Fetch simplified landmass data
+    fetch("https://unpkg.com/world-atlas@2.0.2/countries-110m.json")
+      .then(res => res.json())
+      .then(data => {
+        // Simple conversion from TopoJSON or fetching GeoJSON directly
+        // For simplicity and speed, let's fetch a GeoJSON version
+        return fetch("https://raw.githubusercontent.com/martynafford/natural-earth-geojson/master/110m/cultural/ne_110m_admin_0_countries.json");
+      })
+      .then(res => res.json())
+      .then(data => {
+        countriesRef.current = data.features;
+      })
+      .catch(err => console.error("Failed to load map data", err));
   }, []);
 
   useEffect(() => {
@@ -118,6 +135,54 @@ function Globe({ communities, onCommunityTap }) {
       ctx.beginPath();
       ctx.arc(cx, cy, radius, 0, Math.PI * 2);
       ctx.fill();
+
+      // landmasses
+      if (countriesRef.current.length > 0) {
+        ctx.fillStyle = "rgba(139, 92, 246, 0.12)";
+        ctx.strokeStyle = "rgba(139, 92, 246, 0.25)";
+        ctx.lineWidth = 0.5;
+
+        countriesRef.current.forEach(feature => {
+          const coords = feature.geometry.coordinates;
+          const type = feature.geometry.type;
+
+          const drawPolygon = (polygon) => {
+            ctx.beginPath();
+            let started = false;
+            polygon.forEach(([lng, lat]) => {
+              const latR = (lat * Math.PI) / 180;
+              const lngR = (lng * Math.PI) / 180;
+              let x0 = radius * Math.cos(latR) * Math.cos(lngR);
+              let y0 = radius * Math.sin(latR);
+              let z0 = radius * Math.cos(latR) * Math.sin(lngR);
+
+              let rx = x0 * cosY - z0 * sinY;
+              let rz = x0 * sinY + z0 * cosY;
+              let ry = y0 * cosX - rz * sinX;
+              let rz2 = y0 * sinX + rz * cosX;
+
+              if (rz2 > -radius * 0.1) {
+                if (!started) {
+                  ctx.moveTo(cx + rx, cy - ry);
+                  started = true;
+                } else {
+                  ctx.lineTo(cx + rx, cy - ry);
+                }
+              } else {
+                started = false;
+              }
+            });
+            ctx.fill();
+            ctx.stroke();
+          };
+
+          if (type === "Polygon") {
+            coords.forEach(drawPolygon);
+          } else if (type === "MultiPolygon") {
+            coords.forEach(poly => poly.forEach(drawPolygon));
+          }
+        });
+      }
 
       // edge ring
       ctx.strokeStyle = "rgba(139, 92, 246, 0.15)";
@@ -372,7 +437,7 @@ function ConferenceCard({ conf, index, saved, onSave }) {
       padding: "1.5px", borderRadius: 16, marginBottom: 14,
       background: conf.highlight ? "linear-gradient(135deg, #d4a853, #b8860b, #d4a853, #f0d78c)"
         : conf.major ? "linear-gradient(135deg, #8b5cf6, #6d28d9, #8b5cf6)"
-        : "rgba(139, 92, 246, 0.18)",
+          : "rgba(139, 92, 246, 0.18)",
     }}>
       <div style={{
         background: "linear-gradient(135deg, rgba(15, 8, 40, 0.97), rgba(25, 12, 55, 0.95))",
@@ -564,7 +629,7 @@ export default function App() {
           fontSize: 46, fontWeight: 900, lineHeight: 0.92, margin: "0 0 10px",
           background: "linear-gradient(180deg, #ffffff 10%, rgba(200, 170, 255, 0.75) 100%)",
           WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent", backgroundClip: "text",
-        }}>WORLD<br/>WIDE<br/>ETH</h1>
+        }}>WORLD<br />WIDE<br />ETH</h1>
         <p style={{
           fontFamily: "system-ui", fontSize: 14, lineHeight: 1.6,
           color: "rgba(200, 180, 255, 0.55)", maxWidth: 300, margin: "0 auto",
@@ -665,7 +730,7 @@ export default function App() {
           marginTop: 18, fontFamily: "system-ui", fontSize: 10,
           color: "rgba(200, 180, 255, 0.2)", lineHeight: 1.7,
         }}>
-          ethereum is global because the people are<br/>
+          ethereum is global because the people are<br />
           ETHConf NYC 2026
         </div>
       </div>
