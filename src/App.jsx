@@ -579,12 +579,45 @@ function QuestsView({ quests, onToggleQuest, totalPoints, userProfile, setUserPr
   const [nameInput, setNameInput] = useState(userProfile.name || "");
   const [twitterInput, setTwitterInput] = useState(userProfile.twitter || "");
 
-  const handleSubmit = (e) => {
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
+  const handleSubmit = async (e) => {
     e.preventDefault();
-    if (!nameInput.trim()) return;
-    setUserProfile({ name: nameInput, twitter: twitterInput, submitted: true });
-    setShowSubmitModal(false);
-    setView("leaderboard");
+    if (!nameInput.trim() || isSubmitting) return;
+    setIsSubmitting(true);
+
+    try {
+      // Fetch current board
+      const res = await fetch("https://kvdb.io/LE1uSYU68P62k4pP9ciJ8H/leaderboard");
+      let data = await res.json();
+      if (!Array.isArray(data)) data = [];
+
+      // Filter out previous entry if updating
+      const updatedBoard = data.filter(entry => entry.name !== nameInput);
+      updatedBoard.push({
+        name: nameInput,
+        twitter: twitterInput,
+        count: totalPoints,
+        avatar: "👤",
+        timestamp: Date.now()
+      });
+
+      // Post back to database
+      await fetch("https://kvdb.io/LE1uSYU68P62k4pP9ciJ8H/leaderboard", {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(updatedBoard)
+      });
+
+      setUserProfile({ name: nameInput, twitter: twitterInput, submitted: true });
+      setShowSubmitModal(false);
+      setView("leaderboard");
+    } catch (err) {
+      console.error("Failed to submit score", err);
+      alert("Failed to submit to leaderboard. Please try again.");
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   return (
@@ -707,10 +740,10 @@ function QuestsView({ quests, onToggleQuest, totalPoints, userProfile, setUserPr
                   flex: 1, padding: "12px", borderRadius: 10, background: "rgba(255,255,255,0.05)",
                   color: "white", border: "none", fontWeight: 600, cursor: "pointer"
                 }}>Cancel</button>
-                <button type="submit" style={{
-                  flex: 2, padding: "12px", borderRadius: 10, background: "linear-gradient(135deg, #d4a853, #b8860b)",
-                  color: "#0a0a1a", border: "none", fontWeight: 700, cursor: "pointer"
-                }}>Publish to Board</button>
+                <button type="submit" disabled={isSubmitting} style={{
+                  flex: 2, padding: "12px", borderRadius: 10, background: isSubmitting ? "#888" : "linear-gradient(135deg, #d4a853, #b8860b)",
+                  color: "#0a0a1a", border: "none", fontWeight: 700, cursor: isSubmitting ? "wait" : "pointer"
+                }}>{isSubmitting ? "Publishing..." : "Publish to Board"}</button>
               </div>
             </form>
           </div>
@@ -720,13 +753,26 @@ function QuestsView({ quests, onToggleQuest, totalPoints, userProfile, setUserPr
   );
 }
 
-function LeaderboardView({ totalPoints, userProfile }) {
-  const baseBoard = [];
-  if (userProfile.submitted) {
-    baseBoard.push({ name: userProfile.name, count: totalPoints, avatar: "👤", current: true });
-  }
+const KVDB_URL = "https://kvdb.io/LE1uSYU68P62k4pP9ciJ8H/leaderboard";
 
-  const sortedBoard = baseBoard.sort((a, b) => b.count - a.count);
+function LeaderboardView({ totalPoints, userProfile }) {
+  const [board, setBoard] = useState([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    fetch(KVDB_URL)
+      .then(res => res.json())
+      .then(data => {
+        if (Array.isArray(data)) {
+          setBoard(data.sort((a, b) => b.count - a.count));
+        }
+        setLoading(false);
+      })
+      .catch(err => {
+        console.error("Failed to fetch leaderboard", err);
+        setLoading(false);
+      });
+  }, [userProfile.submitted]);
 
   return (
     <div style={{ padding: "80px 20px 100px", animation: "fadeUp 0.6s ease-out" }}>
@@ -736,20 +782,25 @@ function LeaderboardView({ totalPoints, userProfile }) {
       </div>
 
       <div style={{ maxWidth: 400, margin: "0 auto", background: "rgba(139, 92, 246, 0.05)", borderRadius: 24, border: "1px solid rgba(139, 92, 246, 0.1)", overflow: "hidden" }}>
-        {sortedBoard.length === 0 && (
+        {loading && (
+          <div style={{ padding: "40px 20px", textAlign: "center", color: "rgba(255,255,255,0.4)", fontSize: 14 }}>
+            Loading leaderboard...
+          </div>
+        )}
+        {!loading && board.length === 0 && (
           <div style={{ padding: "40px 20px", textAlign: "center", color: "rgba(255,255,255,0.4)", fontSize: 14 }}>
             The leaderboard is empty. Start completing quests and submit your score to be the first!
           </div>
         )}
-        {sortedBoard.map((entry, i) => (
-          <div key={entry.name} style={{
+        {!loading && board.map((entry, i) => (
+          <div key={entry.name + i} style={{
             display: "flex", alignItems: "center", gap: 16, padding: "16px 20px",
-            background: entry.current ? "rgba(212, 168, 83, 0.15)" : "transparent",
+            background: entry.name === userProfile.name ? "rgba(212, 168, 83, 0.15)" : "transparent",
             borderBottom: "1px solid rgba(255,255,255,0.05)",
           }}>
             <div style={{ fontSize: 18, fontWeight: 800, color: i < 3 ? "#d4a853" : "rgba(255,255,255,0.3)", width: 24 }}>{i + 1}</div>
             <div style={{ fontSize: 24 }}>{entry.avatar}</div>
-            <div style={{ flex: 1, fontWeight: 600, color: entry.current ? "#d4a853" : "white" }}>{entry.name}</div>
+            <div style={{ flex: 1, fontWeight: 600, color: entry.name === userProfile.name ? "#d4a853" : "white" }}>{entry.name}</div>
             <div style={{ textAlign: "right" }}>
               <div style={{ fontSize: 16, fontWeight: 800, color: "white" }}>{entry.count}</div>
               <div style={{ fontSize: 10, color: "rgba(255,255,255,0.4)", textTransform: "uppercase" }}>pts</div>
