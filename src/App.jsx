@@ -426,7 +426,7 @@ function StarField() {
   );
 }
 
-function ConferenceCard({ conf, index, saved, onSave }) {
+function ConferenceCard({ conf, index, saved, onSave, onVisit, isVisited }) {
   const [vis, setVis] = useState(false);
   const ref = useRef(null);
   useEffect(() => {
@@ -485,15 +485,15 @@ function ConferenceCard({ conf, index, saved, onSave }) {
             color: conf.highlight ? "#d4a853" : "#c4b5fd",
             fontSize: 13, fontWeight: 600, fontFamily: "system-ui", letterSpacing: 0.5,
           }}>Learn more →</a>
-          <button onClick={() => window.onVisit(conf.id)} style={{
+          <button onClick={() => onVisit(conf.id)} style={{
             flex: 1,
-            background: window.isVisited(conf.id) ? "linear-gradient(135deg, #34d39920, #34d39910)" : "rgba(255,255,255,0.05)",
-            border: window.isVisited(conf.id) ? "1px solid #34d39940" : "1px solid rgba(255,255,255,0.1)",
+            background: isVisited(conf.id) ? "linear-gradient(135deg, #34d39920, #34d39910)" : "rgba(255,255,255,0.05)",
+            border: isVisited(conf.id) ? "1px solid #34d39940" : "1px solid rgba(255,255,255,0.1)",
             borderRadius: 10, padding: "10px 0", textAlign: "center",
-            color: window.isVisited(conf.id) ? "#34d399" : "rgba(255,255,255,0.4)",
+            color: isVisited(conf.id) ? "#34d399" : "rgba(255,255,255,0.4)",
             fontSize: 13, fontWeight: 600, fontFamily: "system-ui", cursor: "pointer",
           }}>
-            {window.isVisited(conf.id) ? "✓ Stamped" : "Stamp Passport"}
+            {isVisited(conf.id) ? "✓ Stamped" : "Stamp Passport"}
           </button>
         </div>
       </div>
@@ -669,12 +669,16 @@ function CommunityPopup({ community, onClose }) {
 
 export default function App() {
   const [saved, setSaved] = useState(() => {
-    const s = localStorage.getItem("saved_confs");
-    return s ? new Set(JSON.parse(s)) : new Set();
+    try {
+      const s = localStorage.getItem("saved_confs");
+      return s ? new Set(JSON.parse(s)) : new Set();
+    } catch (e) { return new Set(); }
   });
   const [visited, setVisited] = useState(() => {
-    const v = localStorage.getItem("visited_confs");
-    return v ? new Set(JSON.parse(v)) : new Set();
+    try {
+      const v = localStorage.getItem("visited_confs");
+      return v ? new Set(JSON.parse(v)) : new Set();
+    } catch (e) { return new Set(); }
   });
   const [showSavedOnly, setShowSavedOnly] = useState(false);
   const [selectedCommunity, setSelectedCommunity] = useState(null);
@@ -705,9 +709,6 @@ export default function App() {
   }, []);
 
   const displayConferences = showSavedOnly ? CONFERENCES.filter((c) => saved.has(c.id)) : CONFERENCES;
-
-  window.onVisit = toggleVisit;
-  window.isVisited = (id) => visited.has(id);
 
   return (
     <div style={{
@@ -865,7 +866,15 @@ export default function App() {
           }}>nothing saved yet — tap ☆ on any event</div>
         )}
         {displayConferences.map((conf, i) => (
-          <ConferenceCard key={conf.id} conf={conf} index={i} saved={saved.has(conf.id)} onSave={toggleSave} />
+          <ConferenceCard
+            key={conf.id}
+            conf={conf}
+            index={i}
+            saved={saved.has(conf.id)}
+            onSave={toggleSave}
+            onVisit={toggleVisit}
+            isVisited={(id) => visited.has(id)}
+          />
         ))}
       </div>
 
