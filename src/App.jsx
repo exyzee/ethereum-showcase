@@ -59,16 +59,18 @@ function EthBelgiumDiamond({ size = 32 }) {
 function Globe({ communities, onCommunityTap }) {
   const canvasRef = useRef(null);
   const animRef = useRef(null);
-  const rotRef = useRef({ x: 0, y: 0 });
-  const zoomRef = useRef(1);
+  const countriesRef = useRef([]);
+  const visitedRef = useRef(new Set());
+
+  useEffect(() => {
+    visitedRef.current = visited || new Set();
+  }, [visited]);
   const dragRef = useRef({ active: false, lastX: 0, lastY: 0 });
   const pinchRef = useRef({ active: false, dist: 0 });
   const autoRef = useRef(true);
   const idleTimer = useRef(null);
   const pointsRef = useRef([]);
   const sizeRef = useRef(320);
-  const countriesRef = useRef([]);
-
   const resumeAuto = useCallback(() => {
     clearTimeout(idleTimer.current);
     idleTimer.current = setTimeout(() => { autoRef.current = true; }, 2500);
@@ -247,7 +249,8 @@ function Globe({ communities, onCommunityTap }) {
         let rz = x0 * sinY + z0 * cosY;
         let ry = y0 * cosX - rz * sinX;
         let rz2 = y0 * sinX + rz * cosX;
-        return { ...c, sx: cx + rx, sy: cy - ry, sz: rz2, visible: rz2 > -radius * 0.05 };
+        const visited = visitedRef.current.has(c.id);
+        return { ...c, sx: cx + rx, sy: cy - ry, sz: rz2, visible: rz2 > -radius * 0.05, visited };
       });
 
       pts.sort((a, b) => a.sz - b.sz);
@@ -258,8 +261,10 @@ function Globe({ communities, onCommunityTap }) {
         const depth = (p.sz + radius) / (2 * radius);
         const opacity = 0.25 + 0.75 * depth;
         const isHome = p.home;
+        const isVisited = p.visited;
         const dotR = isHome ? (3.5 + zoom * 2.5) : (2 + zoom * 2);
-        const col = p.color || "#c4b5fd";
+        let col = p.color || "#c4b5fd";
+        if (isVisited) col = "#34d399";
 
         // outer glow
         const glow = ctx.createRadialGradient(p.sx, p.sy, 0, p.sx, p.sy, dotR * 4);
@@ -471,14 +476,26 @@ function ConferenceCard({ conf, index, saved, onSave }) {
             color: saved ? "#d4a853" : "rgba(255,255,255,0.4)",
           }}>{saved ? "★" : "☆"}</button>
         </div>
-        <a href={conf.url} target="_blank" rel="noopener noreferrer" style={{
-          display: "block", marginTop: 14,
-          background: conf.highlight ? "linear-gradient(135deg, rgba(212, 168, 83, 0.12), rgba(212, 168, 83, 0.06))" : "rgba(139, 92, 246, 0.1)",
-          border: conf.highlight ? "1px solid rgba(212, 168, 83, 0.2)" : "1px solid rgba(139, 92, 246, 0.15)",
-          borderRadius: 10, padding: "10px 0", textAlign: "center", textDecoration: "none",
-          color: conf.highlight ? "#d4a853" : "#c4b5fd",
-          fontSize: 13, fontWeight: 600, fontFamily: "system-ui", letterSpacing: 0.5,
-        }}>Learn more →</a>
+        <div style={{ display: "flex", gap: 8, marginTop: 14 }}>
+          <a href={conf.url} target="_blank" rel="noopener noreferrer" style={{
+            flex: 1,
+            background: conf.highlight ? "linear-gradient(135deg, rgba(212, 168, 83, 0.12), rgba(212, 168, 83, 0.06))" : "rgba(139, 92, 246, 0.1)",
+            border: conf.highlight ? "1px solid rgba(212, 168, 83, 0.2)" : "1px solid rgba(139, 92, 246, 0.15)",
+            borderRadius: 10, padding: "10px 0", textAlign: "center", textDecoration: "none",
+            color: conf.highlight ? "#d4a853" : "#c4b5fd",
+            fontSize: 13, fontWeight: 600, fontFamily: "system-ui", letterSpacing: 0.5,
+          }}>Learn more →</a>
+          <button onClick={() => window.onVisit(conf.id)} style={{
+            flex: 1,
+            background: window.isVisited(conf.id) ? "linear-gradient(135deg, #34d39920, #34d39910)" : "rgba(255,255,255,0.05)",
+            border: window.isVisited(conf.id) ? "1px solid #34d39940" : "1px solid rgba(255,255,255,0.1)",
+            borderRadius: 10, padding: "10px 0", textAlign: "center",
+            color: window.isVisited(conf.id) ? "#34d399" : "rgba(255,255,255,0.4)",
+            fontSize: 13, fontWeight: 600, fontFamily: "system-ui", cursor: "pointer",
+          }}>
+            {window.isVisited(conf.id) ? "✓ Stamped" : "Stamp Passport"}
+          </button>
+        </div>
       </div>
     </div>
   );
@@ -506,6 +523,108 @@ function CommunityPill({ community }) {
       )}
       {community.name}
     </a>
+  );
+}
+
+function Stamp({ id, size = 100, stamped = false }) {
+  const colors = ["#d4a853", "#8b5cf6", "#34d399", "#f87171", "#60a5fa", "#fb923c"];
+  const color = colors[id % colors.length];
+
+  return (
+    <div style={{
+      width: size, height: size, borderRadius: "50%",
+      border: `2px dashed ${stamped ? color : "rgba(255,255,255,0.1)"}`,
+      display: "flex", alignItems: "center", justifyContent: "center",
+      position: "relative", opacity: stamped ? 1 : 0.3,
+      transform: stamped ? "rotate(-10deg)" : "none",
+      transition: "all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275)",
+      background: stamped ? `${color}10` : "transparent",
+    }}>
+      <div style={{
+        fontSize: size * 0.4, filter: stamped ? "none" : "grayscale(100%)",
+      }}>🎟️</div>
+      {stamped && (
+        <div style={{
+          position: "absolute", inset: 0, borderRadius: "50%",
+          border: `4px solid ${color}40`, margin: 4,
+        }} />
+      )}
+      <div style={{
+        position: "absolute", bottom: -15, left: "50%", transform: "translateX(-50%)",
+        fontSize: 10, color: stamped ? color : "rgba(255,255,255,0.2)",
+        fontWeight: 700, whiteSpace: "nowrap", letterSpacing: 1, textTransform: "uppercase",
+      }}>
+        {stamped ? "STAMPED" : "LOCKED"}
+      </div>
+    </div>
+  );
+}
+
+function PassportView({ visited }) {
+  const visitedConfs = CONFERENCES.filter(c => visited.has(c.id));
+
+  return (
+    <div style={{ padding: "80px 20px 100px", animation: "fadeUp 0.6s ease-out" }}>
+      <div style={{ textAlign: "center", marginBottom: 40 }}>
+        <h2 style={{ fontFamily: "'Playfair Display', serif", fontSize: 32, marginBottom: 8 }}>Digital Passport</h2>
+        <p style={{ color: "rgba(200, 180, 255, 0.5)", fontSize: 14 }}>Collect stamps from the events you've attended</p>
+      </div>
+
+      <div style={{
+        display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(140px, 1fr))",
+        gap: "40px 20px", maxWidth: 600, margin: "0 auto",
+      }}>
+        {CONFERENCES.map(c => (
+          <div key={c.id} style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 12 }}>
+            <Stamp id={c.id} size={80} stamped={visited.has(c.id)} />
+            <div style={{ textAlign: "center" }}>
+              <div style={{ fontSize: 13, fontWeight: 600, color: "white" }}>{c.name}</div>
+              <div style={{ fontSize: 11, color: "rgba(255,255,255,0.4)" }}>{c.date}</div>
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+const MOCK_LEADERBOARD = [
+  { name: "Vitalik.eth", count: 12, avatar: "🐼" },
+  { name: "Aya Miyaguchi", count: 10, avatar: "🌟" },
+  { name: "Tim Beiko", count: 9, avatar: "⚡" },
+  { name: "Glen Weyl", count: 7, avatar: "🎓" },
+  { name: "Skylar Weaver", count: 6, avatar: "🌈" },
+];
+
+function LeaderboardView({ visitedCount }) {
+  const sortedBoard = [...MOCK_LEADERBOARD, { name: "You", count: visitedCount, avatar: "👤", current: true }]
+    .sort((a, b) => b.count - a.count);
+
+  return (
+    <div style={{ padding: "80px 20px 100px", animation: "fadeUp 0.6s ease-out" }}>
+      <div style={{ textAlign: "center", marginBottom: 40 }}>
+        <h2 style={{ fontFamily: "'Playfair Display', serif", fontSize: 32, marginBottom: 8 }}>Global Leaderboard</h2>
+        <p style={{ color: "rgba(200, 180, 255, 0.5)", fontSize: 14 }}>The world's most active ETH explorers</p>
+      </div>
+
+      <div style={{ maxWidth: 400, margin: "0 auto", background: "rgba(139, 92, 246, 0.05)", borderRadius: 24, border: "1px solid rgba(139, 92, 246, 0.1)", overflow: "hidden" }}>
+        {sortedBoard.map((entry, i) => (
+          <div key={entry.name} style={{
+            display: "flex", alignItems: "center", gap: 16, padding: "16px 20px",
+            background: entry.current ? "rgba(212, 168, 83, 0.15)" : "transparent",
+            borderBottom: "1px solid rgba(255,255,255,0.05)",
+          }}>
+            <div style={{ fontSize: 18, fontWeight: 800, color: i < 3 ? "#d4a853" : "rgba(255,255,255,0.3)", width: 24 }}>{i + 1}</div>
+            <div style={{ fontSize: 24 }}>{entry.avatar}</div>
+            <div style={{ flex: 1, fontWeight: 600, color: entry.current ? "#d4a853" : "white" }}>{entry.name}</div>
+            <div style={{ textAlign: "right" }}>
+              <div style={{ fontSize: 16, fontWeight: 800, color: "white" }}>{entry.count}</div>
+              <div style={{ fontSize: 10, color: "rgba(255,255,255,0.4)", textTransform: "uppercase" }}>stamps</div>
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
   );
 }
 
@@ -549,9 +668,25 @@ function CommunityPopup({ community, onClose }) {
 }
 
 export default function App() {
-  const [saved, setSaved] = useState(new Set());
+  const [saved, setSaved] = useState(() => {
+    const s = localStorage.getItem("saved_confs");
+    return s ? new Set(JSON.parse(s)) : new Set();
+  });
+  const [visited, setVisited] = useState(() => {
+    const v = localStorage.getItem("visited_confs");
+    return v ? new Set(JSON.parse(v)) : new Set();
+  });
   const [showSavedOnly, setShowSavedOnly] = useState(false);
   const [selectedCommunity, setSelectedCommunity] = useState(null);
+  const [view, setView] = useState("explore"); // explore, passport, leaderboard
+
+  useEffect(() => {
+    localStorage.setItem("saved_confs", JSON.stringify([...saved]));
+  }, [saved]);
+
+  useEffect(() => {
+    localStorage.setItem("visited_confs", JSON.stringify([...visited]));
+  }, [visited]);
 
   const toggleSave = useCallback((id) => {
     setSaved((prev) => {
@@ -561,7 +696,18 @@ export default function App() {
     });
   }, []);
 
+  const toggleVisit = useCallback((id) => {
+    setVisited((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id); else next.add(id);
+      return next;
+    });
+  }, []);
+
   const displayConferences = showSavedOnly ? CONFERENCES.filter((c) => saved.has(c.id)) : CONFERENCES;
+
+  window.onVisit = toggleVisit;
+  window.isVisited = (id) => visited.has(id);
 
   return (
     <div style={{
@@ -607,7 +753,7 @@ export default function App() {
             }}>by ETH Belgium</div>
           </div>
         </a>
-        {saved.size > 0 && (
+        {saved.size > 0 && view === "explore" && (
           <button onClick={() => setShowSavedOnly((p) => !p)} style={{
             background: showSavedOnly ? "rgba(212, 168, 83, 0.2)" : "rgba(255,255,255,0.06)",
             border: showSavedOnly ? "1px solid rgba(212, 168, 83, 0.4)" : "1px solid rgba(255,255,255,0.08)",
@@ -616,10 +762,17 @@ export default function App() {
             fontSize: 12, fontWeight: 600, fontFamily: "system-ui", cursor: "pointer",
           }}>★ {saved.size}</button>
         )}
+        {view !== "explore" && (
+          <button onClick={() => setView("explore")} style={{
+            background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.08)",
+            borderRadius: 20, padding: "5px 12px", color: "white", fontSize: 12, fontWeight: 600,
+            fontFamily: "system-ui", cursor: "pointer",
+          }}>← Back</button>
+        )}
       </div>
 
       {/* Hero */}
-      <div style={{ padding: "28px 20px 0", textAlign: "center", position: "relative", zIndex: 1 }}>
+      <div style={{ padding: "28px 20px 0", textAlign: "center", position: "relative", zIndex: 1, display: view === "explore" ? "block" : "none" }}>
         <div style={{
           fontFamily: "system-ui", fontSize: 10, fontWeight: 600,
           color: "rgba(212, 168, 83, 0.6)", letterSpacing: 2.5, textTransform: "uppercase", marginBottom: 14,
@@ -639,18 +792,37 @@ export default function App() {
       </div>
 
       {/* Globe */}
-      <div style={{ padding: "20px 16px 8px", position: "relative", zIndex: 1 }}>
-        <Globe communities={COMMUNITIES} onCommunityTap={setSelectedCommunity} />
+      <div style={{ padding: "20px 16px 8px", position: "relative", zIndex: 1, display: view === "explore" ? "block" : "none" }}>
+        <Globe communities={COMMUNITIES} onCommunityTap={setSelectedCommunity} visited={visited} />
         <div style={{
           textAlign: "center", marginTop: 6,
           fontFamily: "system-ui", fontSize: 11, color: "rgba(200, 180, 255, 0.3)",
         }}>drag to explore · pinch to zoom · tap a community</div>
       </div>
 
+      {/* View Switcher Overlay (Mobile-friendly) */}
+      <div style={{
+        position: "fixed", bottom: 20, left: "50%", transform: "translateX(-50%)",
+        background: "rgba(10, 5, 30, 0.85)", backdropFilter: "blur(12px)",
+        border: "1px solid rgba(139, 92, 246, 0.2)", borderRadius: 30,
+        padding: "6px", display: "flex", gap: 4, zIndex: 100,
+        boxShadow: "0 8px 32px rgba(0,0,0,0.4)",
+      }}>
+        {["explore", "passport", "leaderboard"].map((v) => (
+          <button key={v} onClick={() => setView(v)} style={{
+            padding: "8px 18px", borderRadius: 24, border: "none",
+            background: view === v ? "linear-gradient(135deg, #8b5cf6, #6d28d9)" : "transparent",
+            color: view === v ? "white" : "rgba(255,255,255,0.5)",
+            fontSize: 12, fontWeight: 700, textTransform: "capitalize",
+            fontFamily: "system-ui", cursor: "pointer", transition: "all 0.2s",
+          }}>{v}</button>
+        ))}
+      </div>
+
       {/* Narrative */}
       <div style={{
         padding: "16px 24px 28px", textAlign: "center", position: "relative", zIndex: 1,
-        maxWidth: 380, margin: "0 auto",
+        maxWidth: 380, margin: "0 auto", display: view === "explore" ? "block" : "none"
       }}>
         <p style={{
           fontFamily: "system-ui", fontSize: 13, lineHeight: 1.7,
@@ -661,7 +833,7 @@ export default function App() {
       </div>
 
       {/* Communities scroll */}
-      <div style={{ padding: "0 0 24px", position: "relative", zIndex: 1 }}>
+      <div style={{ padding: "0 0 24px", position: "relative", zIndex: 1, display: view === "explore" ? "block" : "none" }}>
         <h2 style={{
           fontFamily: "'Playfair Display', Georgia, serif",
           fontSize: 17, fontWeight: 700, padding: "0 20px 10px", color: "rgba(255,255,255,0.85)",
@@ -676,7 +848,7 @@ export default function App() {
       </div>
 
       {/* Conferences */}
-      <div style={{ padding: "0 16px 40px", position: "relative", zIndex: 1 }}>
+      <div style={{ padding: "0 16px 40px", position: "relative", zIndex: 1, display: view === "explore" ? "block" : "none" }}>
         <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", marginBottom: 14, padding: "0 4px" }}>
           <h2 style={{
             fontFamily: "'Playfair Display', Georgia, serif",
@@ -696,6 +868,9 @@ export default function App() {
           <ConferenceCard key={conf.id} conf={conf} index={i} saved={saved.has(conf.id)} onSave={toggleSave} />
         ))}
       </div>
+
+      {view === "passport" && <PassportView visited={visited} />}
+      {view === "leaderboard" && <LeaderboardView visitedCount={visited.size} />}
 
       {/* Source credit */}
       <div style={{ textAlign: "center", padding: "0 20px 16px", position: "relative", zIndex: 1 }}>
